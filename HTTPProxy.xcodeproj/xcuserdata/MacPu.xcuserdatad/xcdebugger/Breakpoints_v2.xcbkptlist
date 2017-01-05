@@ -9,29 +9,13 @@
             shouldBeEnabled = "Yes"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "HTTPProxy/LASemaphore.c"
-            timestampString = "505211979.377179"
+            filePath = "HTTPProxy/LAHTTPProxy.c"
+            timestampString = "505310137.229944"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "129"
-            endingLineNumber = "129"
-            landmarkName = "la_semaphore_timedwait()"
-            landmarkType = "9">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            shouldBeEnabled = "Yes"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "HTTPProxy/LASemaphore.c"
-            timestampString = "505211992.449091"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "135"
-            endingLineNumber = "135"
-            landmarkName = "la_semaphore_timedwait()"
+            startingLineNumber = "255"
+            endingLineNumber = "255"
+            landmarkName = "http_parse_metadata()"
             landmarkType = "9">
          </BreakpointContent>
       </BreakpointProxy>

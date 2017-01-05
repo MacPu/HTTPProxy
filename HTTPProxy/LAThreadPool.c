@@ -284,13 +284,14 @@ static void * la_thread_do(thread_t *thread)
             job = la_jobqueue_pull(pool->job_queue);
             pthread_mutex_unlock(&(pool->job_queue->rwmutex));
             
-            if(job){
+            if(job && job->arg && job->function){
                 func_buff = job->function;
                 arg_buff = job->arg;
                 func_buff(arg_buff);
+            }
+            if(job){
                 free(job);
             }
-            
             pthread_mutex_lock(&(pool->thcount_lock));
             pool->num_threads_working --;
             if(pool->num_threads_working == 0){
