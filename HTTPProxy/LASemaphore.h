@@ -9,7 +9,7 @@
 #ifndef LASemaphore_h
 #define LASemaphore_h
 
-#include <stdio.h>
+#include <errno.h>
 
 typedef struct semaphore LASemaphoreRef;
 

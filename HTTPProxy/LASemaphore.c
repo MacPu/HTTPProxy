@@ -8,7 +8,7 @@
 
 #include "LASemaphore.h"
 #include <stdlib.h>
-#include <semaphore.h>
+#include <stdio.h>
 #include <pthread.h>
 
 typedef struct semaphore {
