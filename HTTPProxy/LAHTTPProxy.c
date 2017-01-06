@@ -707,14 +707,11 @@ void * do_exchange(void *arg)
             }
             return NULL;
         }
+        
         ret = send_data(request->server,buf,(int)ret);
         if (ret <=0 ) {
-            if(ret == 0 && request->semaphore != NULL){
-                printf("---- finish   send   %d_%d\r\n",request->client,request->server);
+            if(request->semaphore != NULL){
                 LASemaphoreSignal(request->semaphore);
-            }
-            else if(ret < 0){
-                printf("disconnect    send  %d_%d\r\n",request->client,request->server);
             }
             return NULL;
         }
@@ -743,7 +740,7 @@ void *exchange_data(void *arg)
     
     //等待一分钟如果还没有完成，怎认为是超时。
     if(ETIMEDOUT ==  LASemaphoreTimedWait(request2->semaphore, 6000)){
-        fprintf(stderr, " ---------- timeout -----------\r\n");
+        proxy_log(LOG_ERROR, " ---------- timeout -----------");
     }
    
     
