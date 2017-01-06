@@ -41,12 +41,6 @@ typedef int http_socket;
 LAThreadPoolRef *_thpool;
 http_socket _proxy_socket;
 
-typedef struct http_request{
-    http_socket client;
-    http_socket server;
-    LASemaphoreRef *semaphore;
-}http_rquest_t;
-
 enum log_level{
     LOG_ERROR,
     LOG_WARNING,
@@ -64,7 +58,8 @@ enum http_methods_enum {
     DELETE,
     TRACE,
     CONNECT,
-    UNKNOWN
+    UNKNOWN,
+    HTTP_METHODS_COUNT    // 用来计数method的总数， 并不是真的method
 };
 
 enum http_versions_enum {
@@ -78,9 +73,17 @@ typedef struct http_header
     enum http_methods_enum method;
     enum http_versions_enum version;
     const char *search_path;
+    char *source;
     
     TAILQ_HEAD(METADATA_HEAD, http_metadata_item) metadata_head;
 } http_header_t;
+
+typedef struct http_request{
+    http_socket client;
+    http_socket server;
+    LASemaphoreRef *semaphore;
+    http_header_t *header;
+}http_rquest_t;
 
 typedef struct http_metadata_item
 {
@@ -126,8 +129,6 @@ void proxy_log(enum log_level level,char *log_text)
 
 #pragma mark - HTTP Header
 
-int http_methods_len = 9;
-
 const char *http_methods[] =
 {
     "OPTIONS",
@@ -158,15 +159,13 @@ void http_header_destroy(http_header_t *header)
     
     TAILQ_FOREACH(item, &header->metadata_head, entries) {
         
-        printf("---- key:%s->%p value:%s->%p  --- \r\n",item->key,item->key,item->value,item->value);
-        TAILQ_REMOVE(&header->metadata_head, item, entries);
         free((char*)item->key);
         free((char*)item->value);
-        item->key = NULL;
-        item->value = NULL;
+        TAILQ_REMOVE(&header->metadata_head, item, entries);
         free(item);
     }
     free((char*)header->search_path);
+    free((char*)header->source);
     free(header);
 }
 
@@ -179,35 +178,38 @@ void http_parse_method(http_header_t* header, const char* line)
         DONE
     };
     
-    char* copy;
-    char* p;
-    copy = p = strdup(line);
+    char* line_copy_first;
+    char* line_copy;
+    line_copy_first = line_copy = strdup(line);
     char* token = NULL;
-    int s = METHOD;
+    int state = METHOD;
     
-    while ((token = strsep(&p, " \r\n")) != NULL) {
-        switch (s) {
-            case METHOD: {
+    while ((token = strsep(&line_copy, " \r\n")) != NULL) {
+        switch (state) {
+            case METHOD:
+            {
                 int found = 0;
-                for (int i = 0; i < http_methods_len; i++) {
+                for (int i = 0; i < HTTP_METHODS_COUNT; i++) {
                     if (strcmp(token, http_methods[i]) == 0) {
                         found = 1;
                         header->method = i;
                         break;
                     }
                 }
-                if (found == 0) {
-                    header->method = http_methods_len - 1;
-                    free(copy);
+                if (found == 0) {  //如果没有找到，
+                    header->method = UNKNOWN;
+                    free(line_copy_first);
                     return;
                 }
-                s++;
+                state++;
                 break;
             }
             case URL:
+            {
                 header->search_path = strdup(token);
-                s++;
+                state++;
                 break;
+            }
             case VERSION:
             {
                 if(strcmp(token, "HTTP/1.0") == 0) {
@@ -217,33 +219,43 @@ void http_parse_method(http_header_t* header, const char* line)
                 } else {
                     header->version = HTTP_VERSION_INVALID;
                 }
-                s++;
+                state++;
                 break;
             }
             case DONE:
+                header->source = strdup(line);
                 break;
         }
     }
-    free(copy);
+    free(line_copy_first);
     return;
 }
 
 void http_parse_metadata(http_header_t *header, char *line)
 {
     if(strlen(line) == 0) return;
+    header->source = realloc(header->source, (strlen(header->source) + strlen(line) + 1) * sizeof(char));
+    strcat(header->source, line);
     
     char *line_copy = strdup(line);
-    char *key = strdup(strtok(line_copy, ":"));
+    char *last;
+    char *key = strdup(strtok_r(line_copy, ":",&last));
+    if(key == NULL){
+        free(line_copy);
+        return;
+    }
+    char *value = strtok_r(NULL, "\r",&last);
+    if(value == NULL){
+        free(key);
+        free(line_copy);
+        return;
+    }
     
-    char *value = strtok(NULL, "\r");
-    
-    // remove whitespaces :)
+    // 删除空白字符
     char *p = value;
     while(*p == ' ') p++;
     value = strdup(p);
     
-    free(line_copy);
-    line_copy = NULL;
     // create the http_metadata_item object and
     // put the data in it
     http_metadata_item_t *item = malloc(sizeof(http_metadata_item_t));
@@ -251,20 +263,25 @@ void http_parse_metadata(http_header_t *header, char *line)
     item->key = key;
     item->value = value;
     
-    printf("** key:%s->%p value:%s->%p  **\r\n",key,key,value,value);
-    // add the new item to the list of metadatas
     TAILQ_INSERT_TAIL(&header->metadata_head, item, entries);
+    
+    free(line_copy);
+    line_copy = NULL;
 }
 
-char *http_build_header(http_header_t *req)
+char *http_build_header(http_header_t *header)
 {
-    const char *search_path = req->search_path;
+    if(header == NULL || header->search_path == NULL) return NULL;
     
-    // construct the http request
-    int size = strlen("GET ") + 1;
-    //char *request_buffer = calloc(sizeof(char)*size);
+    const char *search_path = header->search_path;
+    
+    // 创建http 请求
+    
+    const char *method = http_methods[header->method];
+    size_t size = strlen(method) + 2;  //因为还有一个空格， 和 \0  etc："GET "
     char *header_buffer = calloc(size, sizeof(char));
-    strncat(header_buffer, "GET ", 4);
+    strncat(header_buffer, method, strlen(method));
+    strncat(header_buffer, " ", 1);   // 空格
     
     size += strlen(search_path) + 1;
     header_buffer = realloc(header_buffer, size);
@@ -274,7 +291,7 @@ char *http_build_header(http_header_t *req)
     // 1.1 is used we should append:
     // 	Connection: close
     // to the header.
-    switch(req->version)
+    switch(header->version)
     {
         case HTTP_VERSION_1_0:
             size += strlen(" HTTP/1.0\r\n\r\n");
@@ -292,7 +309,7 @@ char *http_build_header(http_header_t *req)
     }
     
     http_metadata_item_t *item;
-    TAILQ_FOREACH(item, &req->metadata_head, entries) {
+    TAILQ_FOREACH(item, &header->metadata_head, entries) {
         // Remove Connection properties in header in case
         // there are any
         if(strcmp(item->key, "Connection") == 0 ||
@@ -309,7 +326,7 @@ char *http_build_header(http_header_t *req)
         strncat(header_buffer, "\r\n", 2);
     }
     
-    if(req->version == HTTP_VERSION_1_1)
+    if(header->version == HTTP_VERSION_1_1)
     {
         size += strlen("Connection: close\r\n");
         header_buffer = realloc(header_buffer, size);
@@ -366,12 +383,7 @@ char *read_line(http_socket socket)
         if(c == '\n' || length == 0)
         {
             line[counter] = '\0';
-            if(length == 0){
-                printf("scoket:%d",socket);
-            }
-            else{
-                proxy_log(LOG_TRACE, line);
-            }
+            proxy_log(LOG_TRACE, line);
             return line;
         }
         
@@ -379,10 +391,7 @@ char *read_line(http_socket socket)
         if(counter == buffer_size)
         {
             buffer_size *= 2;
-            
-            // should probably allocate +1 for the null terminator,
-            // but not sure.
-            line = (char*)realloc(line, sizeof(char)*buffer_size);
+            line = (char*)realloc(line, sizeof(char)*buffer_size + 1);
         }
     }
     return NULL;
@@ -397,12 +406,13 @@ char *read_line(http_socket socket)
 http_header_t *http_read_header(int sockfd)
 {
 //    proxy_log(LOG_TRACE, "Reading header\n");
-    http_header_t *req;
-    http_header_init(&req);
+    http_header_t *header;
+    http_header_init(&header);
     
     char *line;
     line = read_line(sockfd);
-    http_parse_method(req, line);
+    http_parse_method(header, line);
+    free(line);
     
     while(1)
     {
@@ -410,19 +420,82 @@ http_header_t *http_read_header(int sockfd)
         if((line[0] == '\r' && line[1] == '\n') || line[0] == '\0')
         {
             // 收到了HTTP header的结束符
-//            proxy_log(LOG_TRACE, "Received header\n");
-            
+            header->source = realloc(header->source, (strlen(header->source) + strlen(line) + 1) * sizeof(char));
+            strcat(header->source, line);
+            free(line);
             break;
         }
         
         if(strlen(line) != 0){
-            http_parse_metadata(req, line);
+            http_parse_metadata(header, line);
         }
         
         free(line); 
     }
     
-    return req;
+    return header;
+}
+
+
+/**
+ 根据受到的http_header_t连接服务器，如果找不到相关的消息，可能会返回-1（http_socket_failed）
+
+ @param header 收到的http_header_t
+ @return return socket on success，or return http_socket_failed。
+ */
+http_socket connect_server(http_header_t *header)
+{
+    if(header == NULL || header->search_path == NULL) return http_socket_failed;
+    
+    char *host = strdup((char*)list_get_key(&header->metadata_head, "Host"));
+    if(host == NULL) return http_socket_failed;
+    
+    char *port = strstr(host, ":");
+    if(port == NULL){
+        //如果没有指定就是默认的端口。
+        port = "80";
+    }
+    else{
+        host = strtok(host, ":");  // 去掉端口号
+        port++; //
+    }
+    
+    if(host == NULL || port == NULL) return http_socket_failed;
+    
+    //开始根据host 和port 获取地址信息
+    struct addrinfo hints, *servinfo;
+    
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    
+    if((getaddrinfo(host, port, &hints, &servinfo) != 0 ) || servinfo == NULL){
+        //没有获取到地址信息
+        char *errlog = calloc(1024, sizeof(char));
+        sprintf(errlog, "connect_server():Could not connect server with host:%s port:%s",host,port);
+        proxy_log(LOG_ERROR, errlog);
+        free(errlog);
+        free(host);
+        return http_socket_failed;
+    }
+    free(host);
+    
+    http_socket server_socket = http_socket_failed;
+    for (struct addrinfo *i = servinfo; i != NULL; i = i->ai_next) {
+        if ((server_socket = socket(i->ai_family, i->ai_socktype, i->ai_protocol)) == -1) {
+            proxy_log(LOG_ERROR, "connect_server(): failed to create server socket");
+            continue;
+        }
+        
+        if (connect(server_socket, i->ai_addr, i->ai_addrlen) == -1) {
+            close(server_socket);
+            proxy_log(LOG_ERROR, "connect_server(): failed to connect server socket");
+            continue;
+        }
+        break;
+    }
+    
+    return server_socket;
 }
 
 #pragma mark - HTTP Proxy
@@ -531,7 +604,7 @@ http_socket connect_host(char *host_name, int port)
  @param len 数据长度
  @return server scoket
  */
-http_socket connect_server(char *recv_buf, int len)
+http_socket connect_server1(char *recv_buf, int len)
 {
     char str_host[MAX_HOST_NAME] = {0};
     char str_port[8] = {0};	// < 65535
@@ -553,7 +626,7 @@ http_socket connect_server(char *recv_buf, int len)
     return connect_host(str_host,port);
 }
 
-ssize_t send_data(http_socket socket, const char* buf, int buf_size)
+ssize_t send_data(http_socket socket, const char* buf, size_t buf_size)
 {
     ssize_t position = 0;
     while (position < buf_size)
@@ -567,6 +640,15 @@ ssize_t send_data(http_socket socket, const char* buf, int buf_size)
     }
     
     return position;
+}
+
+ssize_t send_http_request(http_socket server, http_header_t *header)
+{
+    char *request_buffer = http_build_header(header);
+    if(request_buffer == NULL){
+        return 0;
+    }
+    return send_data(server, request_buffer, strlen(request_buffer));
 }
 
 int recv_request(http_socket socket, char* buf, int buf_size)
@@ -619,6 +701,7 @@ void * do_exchange(void *arg)
     while(1)
     {
         ssize_t ret = recv(request->client,buf,MAXSIZE,0);
+        printf("---------\n%s",buf);
         if (ret <=0 ) {
 //            send_data(request->server,buf,(int)ret);
             if(ret == 0 && request->semaphore != NULL){
@@ -747,13 +830,50 @@ int send_web_request(http_rquest_t *request, char *send_buf, char *recv_buf, int
 void *do_proxy_thread1(void *arg)
 {
     http_rquest_t *request = (http_rquest_t *)arg;
-    http_header_t *header = http_read_header(request->client);
-    if(header == NULL){
+    
+    //先获取到header.
+    request->header = http_read_header(request->client);
+    if(request->header == NULL){  //获取失败
         proxy_log(LOG_ERROR, "do_proxy_thread():Failed to parse header");
+        free(request);
+        close(request->client);
+        return NULL;
     }
     
-    http_header_destroy(header);
+    //连接服务器
+    request->server = connect_server(request->header);
+    if(request->server == http_socket_failed){   //连接失败
+        proxy_log(LOG_ERROR, "do_proxy_thread():Failed to connect server");
+        free(request);
+        close(request->client);
+        return NULL;
+    }
+    
+    if(request->header->method == CONNECT){
+        
+    }
+    else{
+        char *response = http_build_header(request->header);
+        if(response){
+            send_data(request->client, response, strlen(response) + 1);
+            free(response);
+        }
+        
+        http_header_destroy(request->header);
+        close(request->client);
+        free(request);
+        return NULL;
+    }
+    
+    char *response = http_build_header(request->header);
+    if(response){
+        send_data(request->client, response, strlen(response) + 1);
+        free(response);
+    }
+    
+    http_header_destroy(request->header);
     close(request->client);
+    free(request);
     return NULL;
 }
 
@@ -775,13 +895,12 @@ void *do_proxy_thread(void *arg)
         close(request->server);
         
         proxy_log(LOG_ERROR,"do_proxy_thread():recieve incorrect data");
-        
         return NULL;
     }
     
     if ( strncmp("CONNECT ",recv_buf,8) == 0)
     {
-        request->server = connect_server(recv_buf, retval);
+        request->server = connect_server1(recv_buf, retval);
         printf("connect %d-%d \r\n",request->client,request->server);
         if (request->server == http_socket_failed)
         {
@@ -843,7 +962,6 @@ void start(int port)
             http_rquest_t *request = calloc(1, sizeof(http_rquest_t));
             request->client = acceptSocket;
             LAThreadPoolAddJob(_thpool, (void *)do_proxy_thread1, (void *)request);
-//            sleep(2);
         }
     }
     return;
