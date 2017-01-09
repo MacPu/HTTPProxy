@@ -294,10 +294,11 @@ static void * la_thread_do(thread_t *thread)
             }
             pthread_mutex_lock(&(pool->thcount_lock));
             pool->num_threads_working --;
-            if(pool->num_threads_working == 0){
+            int working = pool->num_threads_working;
+            pthread_mutex_unlock(&(pool->thcount_lock));
+            if(working == 0){
                 pthread_cond_signal(&(pool->threads_all_idle));
             }
-            pthread_mutex_unlock(&(pool->thcount_lock));
         }
     }
     

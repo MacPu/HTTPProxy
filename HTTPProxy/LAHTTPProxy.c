@@ -381,7 +381,7 @@ char *read_line(http_socket socket)
         if(c == '\n' || length == 0)
         {
             line[counter] = '\0';
-            proxy_log(LOG_TRACE, line);
+//            proxy_log(LOG_TRACE, line);
             return line;
         }
         
@@ -409,6 +409,7 @@ http_header_t *http_read_header(int sockfd)
     
     char *line;
     line = read_line(sockfd);
+    proxy_log(LOG_TRACE, line);
     http_parse_method(header, line);
     header->source = strdup(line);
     free(line);
@@ -696,19 +697,23 @@ int pre_response(http_rquest_t* request)
 void * do_exchange(void *arg)
 {
     http_rquest_t *request = (http_rquest_t *)arg;
-    char buf[MAXSIZE];
-    
     while(1)
     {
-        ssize_t ret = recv(request->client,buf,MAXSIZE,0);
-        if (ret <=0 ) {
-            if(request->semaphore != NULL){
+        char buffer[MAXSIZE] = {0};
+        ssize_t ret = recv(request->client,buffer,MAXSIZE,0);
+        printf("%s\r\n",buffer);
+        if (ret <= 0 ) {
+            if(ret == 0){
+                printf("close ----> %s\n",request->header->search_path);
+            }
+            
+            if(request->semaphore != NULL && request->server > 0){
                 LASemaphoreSignal(request->semaphore);
             }
             return NULL;
         }
         
-        ret = send_data(request->server,buf,(int)ret);
+        ret = send_data(request->server,buffer,ret);
         if (ret <=0 ) {
             if(request->semaphore != NULL){
                 LASemaphoreSignal(request->semaphore);
@@ -733,17 +738,22 @@ void *exchange_data(void *arg)
     request2->client = request1->server;
     request2->server = request1->client;
     request2->semaphore = request1->semaphore;
+    request2->header = request1->header;
     
     //开始交换数据
-    LAThreadPoolAddJob(_thpool, (void *)do_exchange, request1);
     LAThreadPoolAddJob(_thpool, (void *)do_exchange, request2);
+    LAThreadPoolAddJob(_thpool, (void *)do_exchange, request1);
     
     //等待一分钟如果还没有完成，怎认为是超时。
     if(ETIMEDOUT ==  LASemaphoreTimedWait(request2->semaphore, 6000)){
         proxy_log(LOG_ERROR, " ---------- timeout -----------");
     }
-   
     
+    shutdown(request1->server, SHUT_RDWR);
+    shutdown(request1->client, SHUT_RDWR);
+    close(request1->server);
+    close(request1->client);
+    LASemaphoreWait(request1->semaphore);
     LASemaphoreDestroy(request1->semaphore);
     request1->semaphore = NULL;
     request2->semaphore = NULL;
@@ -819,6 +829,7 @@ void *do_proxy_thread1(void *arg)
         proxy_log(LOG_ERROR, "do_proxy_thread():Failed to parse header");
         free(request);
         close(request->client);
+        http_header_destroy(request->header);
         return NULL;
     }
     
@@ -845,10 +856,6 @@ void *do_proxy_thread1(void *arg)
 //    
     
     http_header_destroy(request->header);
-    shutdown(request->server, SHUT_RDWR);
-    shutdown(request->client, SHUT_RDWR);
-    close(request->server);
-    close(request->client);
     free(request);
     return NULL;
 }
@@ -921,7 +928,7 @@ void start(int port)
         proxy_log(LOG_ERROR,"start():cannot start proxy,because it already running");
         return;
     }
-    _thpool = LAThreadPoolCreate(50);
+    _thpool = LAThreadPoolCreate(100);
     _proxy_socket = proxy_socket_init(port);
     if(_proxy_socket == http_socket_failed){
         return;
