@@ -96,7 +96,7 @@ typedef struct http_metadata_item
 
 #pragma mark - LOG 
 
-void proxy_log(enum log_level level,char *log_text)
+static void proxy_log(enum log_level level,char *log_text)
 {
 #if 1
     FILE *file = stdout;
@@ -129,7 +129,7 @@ void proxy_log(enum log_level level,char *log_text)
 
 #pragma mark - HTTP Header
 
-const char *http_methods[] =
+static const char *http_methods[] =
 {
     "OPTIONS",
     "GET",
@@ -142,7 +142,7 @@ const char *http_methods[] =
     "INVALID"
 };
 
-void http_header_init(http_header_t **hd)
+static void http_header_init(http_header_t **hd)
 {
     *hd = (http_header_t*)malloc(sizeof(http_header_t));
     if(hd == NULL) return;
@@ -155,7 +155,7 @@ void http_header_init(http_header_t **hd)
     TAILQ_INIT(&header->metadata_head);
 }
 
-void http_header_destroy(http_header_t *header)
+static void http_header_destroy(http_header_t *header)
 {
     struct http_metadata_item *item;
     
@@ -171,7 +171,7 @@ void http_header_destroy(http_header_t *header)
     free(header);
 }
 
-void http_parse_method(http_header_t* header, const char* line)
+static void http_parse_method(http_header_t* header, const char* line)
 {
     enum parser_states {
         METHOD,
@@ -232,7 +232,7 @@ void http_parse_method(http_header_t* header, const char* line)
     return;
 }
 
-void http_parse_metadata(http_header_t *header, char *line)
+static void http_parse_metadata(http_header_t *header, char *line)
 {
     if(strlen(line) == 0) return;
     
@@ -268,7 +268,7 @@ void http_parse_metadata(http_header_t *header, char *line)
     line_copy = NULL;
 }
 
-char *http_build_header(http_header_t *header)
+static char *http_build_header(http_header_t *header)
 {
     if(header == NULL || header->search_path == NULL) return NULL;
     
@@ -342,7 +342,7 @@ char *http_build_header(http_header_t *header)
 
 #pragma mark - List
 
-const char *list_get_key(struct METADATA_HEAD *list, const char *key)
+static const char *list_get_key(struct METADATA_HEAD *list, const char *key)
 {
     http_metadata_item_t *item;
     TAILQ_FOREACH(item, list, entries){
@@ -354,7 +354,7 @@ const char *list_get_key(struct METADATA_HEAD *list, const char *key)
     return NULL;
 }
 
-void list_add_key(struct METADATA_HEAD *list, const char *key, const char *value)
+static void list_add_key(struct METADATA_HEAD *list, const char *key, const char *value)
 {
     http_metadata_item_t *item = (http_metadata_item_t*)malloc(sizeof(http_metadata_item_t));
     item->key = key;
@@ -365,7 +365,7 @@ void list_add_key(struct METADATA_HEAD *list, const char *key, const char *value
 
 #pragma mark - http
 
-char *read_line(http_socket socket)
+static char *read_line(http_socket socket)
 {
     int buffer_size = 2;
     char *line = (char*)malloc(sizeof(char)*buffer_size+1);
@@ -404,7 +404,7 @@ char *read_line(http_socket socket)
  @param sockfd 需要读取的socket
  @return http header
  */
-http_header_t *http_read_header(int sockfd)
+static http_header_t *http_read_header(int sockfd)
 {
 //    proxy_log(LOG_TRACE, "Reading header\n");
     http_header_t *header;
@@ -453,7 +453,7 @@ http_header_t *http_read_header(int sockfd)
  @param header 收到的http_header_t
  @return return socket on success，or return http_socket_failed。
  */
-http_socket connect_server(http_header_t *header)
+static http_socket connect_server(http_header_t *header)
 {
     if(header == NULL || header->search_path == NULL) return http_socket_failed;
     char *host_copy = strdup((char*)list_get_key(&header->metadata_head, "Host"));
@@ -487,8 +487,6 @@ http_socket connect_server(http_header_t *header)
         free(host_copy);
         return http_socket_failed;
     }
-    
-    printf("[HOST] host:%s  port:%s \r\n",host,port);
     
     //开始根据host 和port 获取地址信息
     struct addrinfo hints, *servinfo = NULL;
@@ -533,7 +531,7 @@ http_socket connect_server(http_header_t *header)
  @param port 监听的端口号
  @return socket
  */
-http_socket proxy_socket_init(int port)
+static http_socket proxy_socket_init(int port)
 {
     http_socket fd = socket(AF_INET, SOCK_STREAM, 0);
     if(fd == http_socket_failed){
@@ -579,7 +577,7 @@ http_socket proxy_socket_init(int port)
  @param buf_size 大小
  @return 发送的大小
  */
-ssize_t send_data(http_socket socket, const char* buf, size_t buf_size)
+static ssize_t send_data(http_socket socket, const char* buf, size_t buf_size)
 {
     ssize_t position = 0;
     while (position < buf_size)
@@ -601,7 +599,7 @@ ssize_t send_data(http_socket socket, const char* buf, size_t buf_size)
  @param arg http_request_t
  @return NULL
  */
-void * do_exchange(void *arg)
+static void * do_exchange(void *arg)
 {
     http_rquest_t *request = (http_rquest_t *)arg;
     while(1)
@@ -609,11 +607,7 @@ void * do_exchange(void *arg)
         char buffer[MAXSIZE] = {0};
         ssize_t ret = recv(request->client,buffer,MAXSIZE,0);
         if (ret <= 0 ) {
-            if(ret == 0){
-                printf("close ----> %s\n",request->header->search_path);
-            }
-            
-            if(request->semaphore != NULL && request->server > 0){
+            if(request->semaphore != NULL){
                 LASemaphoreSignal(request->semaphore);
             }
             return NULL;
@@ -636,7 +630,7 @@ void * do_exchange(void *arg)
  @param arg http_request_t
  @return NULL
  */
-void *exchange_data(void *arg)
+static void *exchange_data(void *arg)
 {
     http_rquest_t *request1 = (http_rquest_t *)arg;
     request1->semaphore = LASemaphoreCreate(0);
@@ -662,6 +656,8 @@ void *exchange_data(void *arg)
     //再等待另外一端关闭socket。
     LASemaphoreWait(request1->semaphore);
     
+    printf("[COLSE] client:%d  server:%d \r\n",request1->client, request1->server);
+    
     //释放资源
     LASemaphoreDestroy(request1->semaphore);
     request1->semaphore = NULL;
@@ -672,7 +668,22 @@ void *exchange_data(void *arg)
     return NULL;
 }
 
-void *do_proxy_thread(void *arg)
+/**
+ 适用于CONNECT 请求的response 数据
+
+ @param request request
+ @return 发送数据的大小
+ */
+static ssize_t pre_response(http_rquest_t* request)
+{
+    const char response[] = "HTTP/1.1 200 Connection established\r\n"
+    "Proxy-agent: ThinCar HTTP Proxy V1.0. By MacPu.\r\n\r\n";
+    ssize_t ret = send_data(request->client,response,sizeof(response)-1);
+    if (ret <= 0){ return 0;}
+    return ret;
+}
+
+static void *do_proxy_thread(void *arg)
 {
     http_rquest_t *request = (http_rquest_t *)arg;
     
@@ -695,8 +706,15 @@ void *do_proxy_thread(void *arg)
         
     }
     
-    //发送http request
-    send_data(request->server, request->header->source, strlen(request->header->source));
+    if(request->header->method == CONNECT){
+        // 如果是CONNECT请求的话，先发送response数据，创建连接。
+        pre_response(request);
+    }
+    else{
+        //发送http request
+        send_data(request->server, request->header->source, strlen(request->header->source));
+    }
+    
     // 交换数据
     exchange_data(request);
     
@@ -712,7 +730,7 @@ void start(int port)
         proxy_log(LOG_ERROR,"start():cannot start proxy,because it already running");
         return;
     }
-    _thpool = LAThreadPoolCreate(30);
+    _thpool = LAThreadPoolCreate(60);
     _proxy_socket = proxy_socket_init(port);
     if(_proxy_socket == http_socket_failed){
         return;
