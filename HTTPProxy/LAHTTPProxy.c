@@ -415,6 +415,11 @@ http_header_t *http_read_header(int sockfd)
     
     char *line;
     line = read_line(sockfd);
+    if(strlen(line)  == 0){
+        //如果没有收到数据，证明数据不合法，返回空,之前这里会导致崩溃，所以加一个限制
+        http_header_destroy(header);
+        return NULL;
+    }
     proxy_log(LOG_TRACE, line);
     http_parse_method(header, line);
     header->source = strdup(line);
@@ -451,15 +456,27 @@ http_header_t *http_read_header(int sockfd)
 http_socket connect_server(http_header_t *header)
 {
     if(header == NULL || header->search_path == NULL) return http_socket_failed;
-    
     char *host_copy = strdup((char*)list_get_key(&header->metadata_head, "Host"));
     if(host_copy == NULL) return http_socket_failed;
     char *host = host_copy;
     
     char *port = strstr(host_copy, ":");
     if(port == NULL){
+        // 当没有端口号是就要从searchPath里面分析，
+        char *port_str = strstr(header->search_path, host_copy);
+        if(port_str != NULL){
+            port_str += strlen(host_copy);
+            char *port_str_temp = strstr(port_str, ":");
+            // 存在":" 并且还是第一个字符，因为 “:8080/dasf”
+            if(port_str == port_str_temp){
+                port_str_temp ++;
+                port = strsep(&port_str_temp, "/\r");
+            }
+        }
         //如果没有指定就是默认的端口。
-        port = "80";
+        if(port == NULL){
+            port = "80";
+        }
     }
     else{
         host = strtok(host_copy, ":");  // 去掉端口号
@@ -470,6 +487,8 @@ http_socket connect_server(http_header_t *header)
         free(host_copy);
         return http_socket_failed;
     }
+    
+    printf("[HOST] host:%s  port:%s \r\n",host,port);
     
     //开始根据host 和port 获取地址信息
     struct addrinfo hints, *servinfo = NULL;
@@ -663,7 +682,6 @@ void *do_proxy_thread(void *arg)
         proxy_log(LOG_ERROR, "do_proxy_thread():Failed to parse header");
         free(request);
         close(request->client);
-        http_header_destroy(request->header);
         return NULL;
     }
     
