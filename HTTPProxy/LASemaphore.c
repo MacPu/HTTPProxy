@@ -117,7 +117,8 @@ static void la_semaphore_signal_all(semaphore_t *semaphore)
 static void la_semaphore_wait(semaphore_t *semaphore)
 {
     pthread_mutex_lock(&(semaphore->mutex));
-    if(semaphore->value == 0){
+    if(semaphore->value <= 0){
+        semaphore->value = 0;
         pthread_cond_wait(&(semaphore->cond), &(semaphore->mutex));
     }
     semaphore->value --;
@@ -128,7 +129,8 @@ static int la_semaphore_timedwait(semaphore_t *semaphore, long sec)
 {
     pthread_mutex_lock(&(semaphore->mutex));
     int res = 0;
-    if(semaphore->value == 0){
+    if(semaphore->value <= 0){
+        semaphore->value = 0;
         struct timespec tv;
         clock_gettime(CLOCK_REALTIME, &tv);
         tv.tv_sec += sec;
