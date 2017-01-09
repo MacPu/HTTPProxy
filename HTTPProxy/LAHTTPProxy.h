@@ -11,6 +11,11 @@
 
 #include <stdio.h>
 
+/**
+ 开启HTTP 代理，
+
+ @param port 需要开启的端口号
+ */
 void start(int port);
 
 #endif /* LAHTTPProxy_h */

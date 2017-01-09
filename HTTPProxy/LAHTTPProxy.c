@@ -145,6 +145,7 @@ const char *http_methods[] =
 void http_header_init(http_header_t **hd)
 {
     *hd = (http_header_t*)malloc(sizeof(http_header_t));
+    if(hd == NULL) return;
     
     http_header_t *header = *hd;
     header->method = 0;
@@ -375,10 +376,12 @@ char *read_line(http_socket socket)
     while(1)
     {
         length = recv(socket, &c, 1, 0);
-        line[counter++] = c;
+        if(length > 0){
+            line[counter++] = c;
+        }
         
         //检测到‘\n’ 或者没有说到数据，就证明收完了。
-        if(c == '\n' || length == 0)
+        if(c == '\n' || length <= 0)
         {
             line[counter] = '\0';
 //            proxy_log(LOG_TRACE, line);
@@ -406,6 +409,9 @@ http_header_t *http_read_header(int sockfd)
 //    proxy_log(LOG_TRACE, "Reading header\n");
     http_header_t *header;
     http_header_init(&header);
+    if(header == NULL){
+        return NULL;
+    }
     
     char *line;
     line = read_line(sockfd);
@@ -547,87 +553,13 @@ http_socket proxy_socket_init(int port)
 }
 
 /**
- 根据host名连接host
-
- @param host_name host的名称
- @param port host 的端口号
- @return host socket
+ 发送数据
+ 
+ @param socket 往哪个通道发送
+ @param buf 数据缓存
+ @param buf_size 大小
+ @return 发送的大小
  */
-http_socket connect_host(char *host_name, int port)
-{
-    //先找到host的IP地址
-    struct hostent *host = gethostbyname(host_name);
-    if(!host){
-        return http_socket_failed;
-    }
-    struct in_addr inad = *((struct in_addr*) *host->h_addr_list);
-    struct sockaddr_in addr;
-    bzero((char *)&addr, sizeof(addr));
-    addr.sin_len = sizeof(addr);
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
-    addr.sin_addr.s_addr = inad.s_addr;
-    
-    //然后连接
-    http_socket host_socket = socket(AF_INET, SOCK_STREAM, 0);
-    if(http_socket_failed == host_socket){
-        close(host_socket);
-        proxy_log(LOG_ERROR,"init server scoket failed");
-        return http_socket_failed;
-    }
-    
-    int on = 1;
-    setsockopt(host_socket, IPPROTO_TCP, SO_NOSIGPIPE, &on, sizeof(on));
-    
-    struct linger m_sLinger;
-    m_sLinger.l_onoff = 1;  // (在closesocket()调用,但是还有数据没发送完毕的时候容许逗留)
-    m_sLinger.l_linger = 0; // (容许逗留的时间为0秒)
-    setsockopt(host_socket,SOL_SOCKET,SO_LINGER,(const char*)&m_sLinger, sizeof(struct linger));
-    
-    if(connect(host_socket, (const struct sockaddr *)&addr, addr.sin_len) == -1){
-        close(host_socket);
-        proxy_log(LOG_ERROR,"conect server scoket failed");
-        return http_socket_failed;
-    }
-    
-    char *logText = calloc(1,strlen(host_name) + 32);
-    sprintf(logText, "Connected host %s : %d",host_name,port);
-    proxy_log(LOG_TRACE,logText);
-    free(logText);
-    
-    return host_socket;
-}
-
-
-/**
- 根据接收到的http request数据包，解析host的名称和端口号
-
- @param recv_buf http request data buffer
- @param len 数据长度
- @return server scoket
- */
-http_socket connect_server1(char *recv_buf, int len)
-{
-    char str_host[MAX_HOST_NAME] = {0};
-    char str_port[8] = {0};	// < 65535
-    int port = 80;
-    char* sp = (char*)(memchr(recv_buf+8,' ',len-8));
-    if (!sp) {return -1;}
-    char* pt = (char*)(memchr(recv_buf+8,':',sp-recv_buf-8 ));
-    if (pt)
-    {
-        long l = sp-pt-1;
-        if (l >= 8) { return -1; }
-        memcpy(str_port,pt+1,l);
-        port = atoi(str_port);
-        memcpy(str_host,recv_buf+8,pt-recv_buf-8);
-    } else {
-        memcpy(str_host,recv_buf+8,sp-recv_buf-8);
-    }
-    
-    return connect_host(str_host,port);
-}
-
 ssize_t send_data(http_socket socket, const char* buf, size_t buf_size)
 {
     ssize_t position = 0;
@@ -644,50 +576,6 @@ ssize_t send_data(http_socket socket, const char* buf, size_t buf_size)
     return position;
 }
 
-ssize_t send_http_request(http_socket server, http_header_t *header)
-{
-    char *request_buffer = http_build_header(header);
-    if(request_buffer == NULL){
-        return 0;
-    }
-    return send_data(server, request_buffer, strlen(request_buffer));
-}
-
-int recv_request(http_socket socket, char* buf, int buf_size)
-{
-    int len = 0;
-    char * prf = buf;
-    while (len<buf_size)
-    {
-        ssize_t ret = recv(socket,buf,buf_size-len,0);
-        if (ret > 0) {
-            len += ret;
-        } else {
-            return (int)ret;
-        }
-        // Find End Tag: \r\n\r\n
-        if ( len > 4 )
-        {
-            if ( strstr(prf,"\r\n\r\n") )
-            {
-                break;
-            } else {
-                prf = buf + len - 4;
-            }
-        }
-    }
-    return len;
-}
-
-int pre_response(http_rquest_t* request)
-{
-    const char response[] = "HTTP/1.1 200 Connection established\r\n"
-    "Proxy-agent: ThinCar HTTP Proxy Lite /0.2\r\n\r\n";
-    ssize_t ret = send_data(request->client,response,sizeof(response)-1);
-    if (ret <= 0){ return 0;}
-    return 1;
-}
-
 /**
  交换数据，把client里的数据发送给server, 这是一个线程方法
 
@@ -701,7 +589,6 @@ void * do_exchange(void *arg)
     {
         char buffer[MAXSIZE] = {0};
         ssize_t ret = recv(request->client,buffer,MAXSIZE,0);
-        printf("%s\r\n",buffer);
         if (ret <= 0 ) {
             if(ret == 0){
                 printf("close ----> %s\n",request->header->search_path);
@@ -744,16 +631,19 @@ void *exchange_data(void *arg)
     LAThreadPoolAddJob(_thpool, (void *)do_exchange, request2);
     LAThreadPoolAddJob(_thpool, (void *)do_exchange, request1);
     
-    //等待一分钟如果还没有完成，怎认为是超时。
-    if(ETIMEDOUT ==  LASemaphoreTimedWait(request2->semaphore, 6000)){
-        proxy_log(LOG_ERROR, " ---------- timeout -----------");
-    }
+    // 先等一个信号，等到一端先关了socket，
+    LASemaphoreWait(request2->semaphore);
     
+    // 在关闭该程序连接起来的socket。
     shutdown(request1->server, SHUT_RDWR);
     shutdown(request1->client, SHUT_RDWR);
     close(request1->server);
     close(request1->client);
+    
+    //再等待另外一端关闭socket。
     LASemaphoreWait(request1->semaphore);
+    
+    //释放资源
     LASemaphoreDestroy(request1->semaphore);
     request1->semaphore = NULL;
     request2->semaphore = NULL;
@@ -763,63 +653,7 @@ void *exchange_data(void *arg)
     return NULL;
 }
 
-int send_web_request(http_rquest_t *request, char *send_buf, char *recv_buf, int data_len)
-{
-    char host_name[MAX_HOST_NAME] = {0};
-    int port = DEFAULTPORT;
-    
-    char * line = strstr(recv_buf,"\r\n");
-    
-    char * url_begin = strchr(recv_buf,' ');
-    if (!url_begin) { return 0; }
-    
-    char * path_begin = strchr(url_begin+1+HEADLEN,'/');
-    if (!path_begin) { return 0; }
-    
-    
-    char * port_begin = (char*)(memchr(url_begin+1+HEADLEN,':',path_begin-url_begin-HEADLEN) );
-    char * host_end = path_begin;
-    if (port_begin)
-    {
-        host_end = port_begin;
-        char BufPort[64] = {0};
-        memcpy(BufPort,port_begin+1,path_begin-port_begin-1);
-        port = atoi(BufPort);
-    }
-    memcpy(host_name,url_begin+1+HEADLEN, host_end-url_begin-1-HEADLEN);
-    
-    char lineBuf[0x1000] = {0};
-    long leng = line-recv_buf;
-    if (leng < sizeof(lineBuf) )
-    {
-        memcpy(lineBuf,recv_buf,leng);
-    } else {
-        const static int lenc = 50;
-        memcpy(lineBuf,recv_buf,lenc);
-        strcpy(lineBuf+lenc," ... ");
-        memcpy(lineBuf+lenc+5,line-16,16);
-    }
-    
-    request->server = connect_host(host_name, port);
-    if(request->server == http_socket_failed) return 0;
-    printf("web %d-%d \r\n",request->client,request->server);
-    
-    memcpy(send_buf,recv_buf, url_begin-recv_buf+1 );
-    memcpy(send_buf+(url_begin-recv_buf)+1,path_begin,recv_buf+data_len-path_begin);
-    
-    char * http_tag = strstr(send_buf+(url_begin-recv_buf)+1," HTTP/1.1\r\n");
-    if (http_tag) { http_tag[8] = '0'; }
-    
-    size_t TotalLen = url_begin+1+data_len-path_begin;
-    
-    if( send_data(request->server,send_buf, (int)TotalLen) <= 0){ return 0; }
-    
-    exchange_data( request );
-    
-    return 1;
-}
-
-void *do_proxy_thread1(void *arg)
+void *do_proxy_thread(void *arg)
 {
     http_rquest_t *request = (http_rquest_t *)arg;
     
@@ -838,87 +672,19 @@ void *do_proxy_thread1(void *arg)
     if(request->server == http_socket_failed){
         free(request);
         close(request->client);
+        http_header_destroy(request->header);
         return NULL;
         
     }
     
+    //发送http request
     send_data(request->server, request->header->source, strlen(request->header->source));
+    // 交换数据
     exchange_data(request);
-//    
-//    while (1) {
-//        char *line = read_line(request->server);
-//        if(line == NULL || strlen(line) == 0){
-//            break;
-//        }
-//        send_data(request->client, line, strlen(line));
-//        free(line);
-//    }
-//    
     
+    // 释放资源s
     http_header_destroy(request->header);
     free(request);
-    return NULL;
-}
-
-void *do_proxy_thread(void *arg)
-{
-    http_rquest_t *request = (http_rquest_t *)arg;
-//    struct linger m_sLinger;
-//    m_sLinger.l_onoff = 1;  // (在closesocket()调用,但是还有数据没发送完毕的时候容许逗留)
-//    m_sLinger.l_linger = 0; // (容许逗留的时间为0秒)
-//    setsockopt(request->client,SOL_SOCKET,SO_LINGER,(const char*)&m_sLinger, sizeof(struct linger));
-//    
-    
-    char recv_buf[MAXSIZE] = {0};
-    char send_buf[MAXSIZE] = {0};
-    int retval = recv_request(request->client, recv_buf, MAXSIZE);
-    if(retval == 0)
-    {
-        close(request->client);
-        close(request->server);
-        
-        proxy_log(LOG_ERROR,"do_proxy_thread():recieve incorrect data");
-        return NULL;
-    }
-    
-    if ( strncmp("CONNECT ",recv_buf,8) == 0)
-    {
-        request->server = connect_server1(recv_buf, retval);
-        printf("connect %d-%d \r\n",request->client,request->server);
-        if (request->server == http_socket_failed)
-        {
-            close(request->client);
-            close(request->server);
-            
-            proxy_log(LOG_ERROR,"do_proxy_thread():cannot connect server");
-            
-            return NULL;
-        }
-        if (pre_response(request)< 0 ) {
-            
-            close(request->client);
-            close(request->server);
-            
-            proxy_log(LOG_ERROR,"do_proxy_thread():send pre response failed");
-            
-            return NULL;
-        }
-        exchange_data(&request);
-    }
-    else
-    {
-       if(0 == send_web_request(request, send_buf, recv_buf, retval))
-       {
-           close(request->client);
-           close(request->server);
-           
-           proxy_log(LOG_ERROR,"do_proxy_thread():send web request failed");
-           
-           return NULL;
-       }
-    }
-    
-    free(arg);
     return NULL;
 }
 
@@ -928,7 +694,7 @@ void start(int port)
         proxy_log(LOG_ERROR,"start():cannot start proxy,because it already running");
         return;
     }
-    _thpool = LAThreadPoolCreate(100);
+    _thpool = LAThreadPoolCreate(30);
     _proxy_socket = proxy_socket_init(port);
     if(_proxy_socket == http_socket_failed){
         return;
@@ -944,7 +710,7 @@ void start(int port)
         if(acceptSocket != http_socket_failed){
             http_rquest_t *request = calloc(1, sizeof(http_rquest_t));
             request->client = acceptSocket;
-            LAThreadPoolAddJob(_thpool, (void *)do_proxy_thread1, (void *)request);
+            LAThreadPoolAddJob(_thpool, (void *)do_proxy_thread, (void *)request);
         }
     }
     return;

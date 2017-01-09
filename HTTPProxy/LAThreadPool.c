@@ -29,7 +29,7 @@ typedef struct jobqueue {
     job_t *front;
     job_t *rear;
     LASemaphoreRef *has_jobs;
-    int len;
+    volatile int len;
 }jobqueue_t;
 
 /** thread  */
@@ -153,7 +153,7 @@ static thpool_t * la_thpool_init(int max_num_threads)
 
 static int la_thpool_add_job(thpool_t* thpool, void (*function)(void*), void* arg)
 {
-//    printf("pool alive:%d working:%d queue:%d \n",thpool->num_threads_alive,thpool->num_threads_working,thpool->job_queue->len);
+    printf("pool alive:%d working:%d queue:%d \n",thpool->num_threads_alive,thpool->num_threads_working,thpool->job_queue->len);
     
     job_t *newjob = (job_t *)malloc(sizeof(job_t));
     if(newjob == NULL){
@@ -209,6 +209,8 @@ static void la_thpool_destory(thpool_t *thpool)
     for(int i = 0;i<threads_total;i++){
         la_thread_destroy(thpool->threads[i]);
     }
+    pthread_mutex_destroy(&(thpool->thcount_lock));
+    pthread_cond_destroy(&(thpool->threads_all_idle));
     free(thpool);
 }
 
@@ -357,10 +359,10 @@ static void la_jobqueue_push(jobqueue_t *queue, job_t *job)
         queue->rear->next = job;
         queue->rear = job;
     }
-    
     queue->len ++;
-    
-    LASemaphoreSignal(queue->has_jobs);
+    if(queue->len == 1){
+        LASemaphoreSignal(queue->has_jobs);
+    }
 }
 
 static job_t * la_jobqueue_pull(jobqueue_t *queue)
