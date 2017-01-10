@@ -16,6 +16,6 @@
 
  @param port 需要开启的端口号
  */
-void start(int port);
+void start_http_proxy(int port);
 
 #endif /* LAHTTPProxy_h */

@@ -48,7 +48,6 @@ enum log_level{
     LOG_TRACE
 };
 
-
 enum http_methods_enum {
     OPTIONS,
     GET,
@@ -73,7 +72,7 @@ typedef struct http_header
     enum http_methods_enum method;
     enum http_versions_enum version;
     const char *search_path;
-    char *source;
+    char *source;                       //http request header source.
     
     TAILQ_HEAD(METADATA_HEAD, http_metadata_item) metadata_head;
 } http_header_t;
@@ -81,8 +80,8 @@ typedef struct http_header
 typedef struct http_request{
     http_socket client;
     http_socket server;
-    LASemaphoreRef *semaphore;
     http_header_t *header;
+    LASemaphoreRef *semaphore;
 }http_rquest_t;
 
 typedef struct http_metadata_item
@@ -125,6 +124,29 @@ static void proxy_log(enum log_level level,char *log_text)
         fprintf(file, "[HTTPProxy %s] %s \r\n",level_str,log_text);
     }
 #endif
+}
+
+#pragma mark - List
+
+static const char *list_get_key(struct METADATA_HEAD *list, const char *key)
+{
+    http_metadata_item_t *item;
+    TAILQ_FOREACH(item, list, entries){
+        if(strcmp(item->key, key) == 0)
+        {
+            return item->value;
+        }
+    }
+    return NULL;
+}
+
+static void list_add_key(struct METADATA_HEAD *list, const char *key, const char *value)
+{
+    http_metadata_item_t *item = (http_metadata_item_t*)malloc(sizeof(http_metadata_item_t));
+    item->key = key;
+    item->value = value;
+    
+    TAILQ_INSERT_TAIL(list, item, entries);
 }
 
 #pragma mark - HTTP Header
@@ -257,12 +279,7 @@ static void http_parse_metadata(http_header_t *header, char *line)
     
     // create the http_metadata_item object and
     // put the data in it
-    http_metadata_item_t *item = malloc(sizeof(http_metadata_item_t));
-    bzero(item, sizeof(http_metadata_item_t));
-    item->key = key;
-    item->value = value;
-    
-    TAILQ_INSERT_TAIL(&header->metadata_head, item, entries);
+    list_add_key(&header->metadata_head, key, value);
     
     free(line_copy);
     line_copy = NULL;
@@ -338,29 +355,6 @@ static char *http_build_header(http_header_t *header)
     strncat(header_buffer, "\r\n", 2);
     
     return header_buffer;
-}
-
-#pragma mark - List
-
-static const char *list_get_key(struct METADATA_HEAD *list, const char *key)
-{
-    http_metadata_item_t *item;
-    TAILQ_FOREACH(item, list, entries){
-        if(strcmp(item->key, key) == 0)
-        {
-            return item->value;
-        }
-    }
-    return NULL;
-}
-
-static void list_add_key(struct METADATA_HEAD *list, const char *key, const char *value)
-{
-    http_metadata_item_t *item = (http_metadata_item_t*)malloc(sizeof(http_metadata_item_t));
-    item->key = key;
-    item->value = value;
-    
-    TAILQ_INSERT_TAIL(list, item, entries); 
 }
 
 #pragma mark - http
@@ -669,7 +663,7 @@ static void *exchange_data(void *arg)
 }
 
 /**
- 适用于CONNECT 请求的response 数据
+ 用于CONNECT 请求的response 数据
 
  @param request request
  @return 发送数据的大小
@@ -683,9 +677,15 @@ static ssize_t pre_response(http_rquest_t* request)
     return ret;
 }
 
-static void *do_proxy_thread(void *arg)
+
+/**
+ 每收到一个socket请求之后就会到这个方法里面来。这个是网络数据交换的核心代码
+
+ @param req http request
+ */
+static void *do_proxy_thread(void *req)
 {
-    http_rquest_t *request = (http_rquest_t *)arg;
+    http_rquest_t *request = (http_rquest_t *)req;
     
     //先获取到header.
     request->header = http_read_header(request->client);
@@ -724,7 +724,9 @@ static void *do_proxy_thread(void *arg)
     return NULL;
 }
 
-void start(int port)
+#pragma mark - start_http_proxy
+
+void start_http_proxy(int port)
 {
     if(_proxy_socket > 0){
         proxy_log(LOG_ERROR,"start():cannot start proxy,because it already running");

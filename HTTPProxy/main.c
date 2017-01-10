@@ -11,6 +11,6 @@
 
 int main(int argc, const char * argv[]) {
     printf("Hello, World!\n");
-    start(8088);
+    start_http_proxy(8088);
     return 0;
 }
