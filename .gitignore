@@ -1,34 +1,15 @@
-# Exclude the build directory
-
-build/*
-
-# Exclude OS X folder attributes
-
 .DS_Store
-
-# Exclude user-specific XCode 3 and 4 files
-
-#*.xcworkspace
-
+*.DS_Store
 *.idea
-
 *.diff
-
 *.xcuserdata
-
 *.xcshareddata
-
 *.xcuserdatad
-
 *.xcscmblueprint
-
 xcuserstate
-
 xcuserdata
-
 xcuserdata/**/*
-
 !xcuserdata/**/xcschemes/*
-
 *.xcuserdatad
-ObjcUML/
+
+*.xcuserstate
