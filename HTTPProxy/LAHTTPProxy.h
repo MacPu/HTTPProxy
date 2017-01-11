@@ -12,9 +12,9 @@
 #include <stdio.h>
 
 /**
- 开启HTTP 代理，
+ start http proxy on the port，
 
- @param port 需要开启的端口号
+ @param port the port.
  */
 void start_http_proxy(int port);
 
