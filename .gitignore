@@ -13,3 +13,7 @@ xcuserdata/**/*
 *.xcuserdatad
 
 *.xcuserstate
+
+HTTPProxy/HTTPProxy
+
+HTTPProxy/*.o
