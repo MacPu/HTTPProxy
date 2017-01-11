@@ -13,6 +13,10 @@
 #include <unistd.h>
 #include <signal.h>
 
+#if defined(__linux__) || defined(__ANDROID__)
+#include<sys/prctl.h>
+#endif
+
 static volatile int thpool_keepalive;
 static volatile int thpool_on_hold;
 
@@ -247,9 +251,9 @@ static void * la_thread_do(thread_t *thread)
     char *thread_name = (char *)malloc(128);
     sprintf(thread_name, "thpool-thread-%d",thread->id);
     
-#if defined(__linux__)
+#if defined(__linux__) || defined(__ANDROID__)
     prctl(PR_SET_NAME, thread_name);
-#elif defined(__APPLE__) && defined(__MACH__)
+#elif defined(__APPLE__) || defined(__MACH__)
     pthread_setname_np(thread_name);
 #else
     fprintf(stderr, "la_thread_do(): pthread_setname_np is not supported on this system\n");

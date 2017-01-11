@@ -29,6 +29,14 @@
 #include <netinet/in.h>
 #include <signal.h>
 
+#ifdef __ANDROID__
+
+#include <android/log.h>
+#define ANDROID_LOG_TAG "HTTPProxy"
+#define ANDROID_LOG_D(...)  __android_log_print(ANDROID_LOG_DEBUG,ANDROID_LOG_TAG,__VA_ARGS__)
+
+#endif
+
 typedef int http_socket;
 
 #define http_socket_failed -1
@@ -97,7 +105,7 @@ typedef struct http_metadata_item
 
 static void proxy_log(enum log_level level,char *log_text)
 {
-#if 1
+#if DEBUG
     FILE *file = stdout;
     if (level == LOG_ERROR) {
         file = stderr;
@@ -117,11 +125,20 @@ static void proxy_log(enum log_level level,char *log_text)
         default:
             break;
     }
+    
     if(level == LOG_TRACE){
+#ifdef __ANDROID__
+        ANDROID_LOG_D("[HTTPProxy] %s \r\n",log_text);
+#else
         fprintf(file, "[HTTPProxy] %s \r\n",log_text);
+#endif
     }
     else{
+#ifdef __ANDROID__
+        ANDROID_LOG_D("[HTTPProxy %s] %s \r\n",level_str,log_text);
+#else
         fprintf(file, "[HTTPProxy %s] %s \r\n",level_str,log_text);
+#endif
     }
 #endif
 }
@@ -535,7 +552,9 @@ static http_socket proxy_socket_init(int port)
     
     struct sockaddr_in addr;
     bzero((char *)&addr, sizeof(addr));
+#ifdef __APPLE__
     addr.sin_len = sizeof(addr);
+#endif
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
     addr.sin_addr.s_addr = INADDR_ANY;
