@@ -7,15 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		C21EBC041E1396C3001ECF99 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = C21EBC031E1396C3001ECF99 /* main.c */; };
-		C21EBC0C1E1396F0001ECF99 /* LAThreadPool.c in Sources */ = {isa = PBXBuildFile; fileRef = C21EBC0A1E1396F0001ECF99 /* LAThreadPool.c */; };
-		C21EBC571E153B66001ECF99 /* LAHTTPProxy.c in Sources */ = {isa = PBXBuildFile; fileRef = C21EBC551E153B66001ECF99 /* LAHTTPProxy.c */; };
-		C21EBC5A1E1561B0001ECF99 /* LASemaphore.c in Sources */ = {isa = PBXBuildFile; fileRef = C21EBC581E1561B0001ECF99 /* LASemaphore.c */; };
-		C2379F241E25DAE10022573A /* Makefile in Sources */ = {isa = PBXBuildFile; fileRef = C2379F231E25DAE10022573A /* Makefile */; };
+		C2379F8E1E271CC60022573A /* LAHTTPProxy.c in Sources */ = {isa = PBXBuildFile; fileRef = C2379F861E271CC60022573A /* LAHTTPProxy.c */; };
+		C2379F8F1E271CC60022573A /* LASemaphore.c in Sources */ = {isa = PBXBuildFile; fileRef = C2379F881E271CC60022573A /* LASemaphore.c */; };
+		C2379F901E271CC60022573A /* LAThreadPool.c in Sources */ = {isa = PBXBuildFile; fileRef = C2379F8A1E271CC60022573A /* LAThreadPool.c */; };
+		C2379F911E271CC60022573A /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = C2379F8C1E271CC60022573A /* main.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		C21EBBFE1E1396C3001ECF99 /* CopyFiles */ = {
+		C2379F791E271C3C0022573A /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = /usr/share/man/man1/;
@@ -27,19 +26,18 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		C21EBC001E1396C3001ECF99 /* HTTPProxy */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = HTTPProxy; sourceTree = BUILT_PRODUCTS_DIR; };
-		C21EBC031E1396C3001ECF99 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
-		C21EBC0A1E1396F0001ECF99 /* LAThreadPool.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = LAThreadPool.c; sourceTree = "<group>"; };
-		C21EBC0B1E1396F0001ECF99 /* LAThreadPool.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LAThreadPool.h; sourceTree = "<group>"; };
-		C21EBC551E153B66001ECF99 /* LAHTTPProxy.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = LAHTTPProxy.c; sourceTree = "<group>"; };
-		C21EBC561E153B66001ECF99 /* LAHTTPProxy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LAHTTPProxy.h; sourceTree = "<group>"; };
-		C21EBC581E1561B0001ECF99 /* LASemaphore.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = LASemaphore.c; sourceTree = "<group>"; };
-		C21EBC591E1561B0001ECF99 /* LASemaphore.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LASemaphore.h; sourceTree = "<group>"; };
-		C2379F231E25DAE10022573A /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		C2379F7B1E271C3C0022573A /* HTTPProxy */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = HTTPProxy; sourceTree = BUILT_PRODUCTS_DIR; };
+		C2379F861E271CC60022573A /* LAHTTPProxy.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = LAHTTPProxy.c; sourceTree = "<group>"; };
+		C2379F871E271CC60022573A /* LAHTTPProxy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LAHTTPProxy.h; sourceTree = "<group>"; };
+		C2379F881E271CC60022573A /* LASemaphore.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = LASemaphore.c; sourceTree = "<group>"; };
+		C2379F891E271CC60022573A /* LASemaphore.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LASemaphore.h; sourceTree = "<group>"; };
+		C2379F8A1E271CC60022573A /* LAThreadPool.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = LAThreadPool.c; sourceTree = "<group>"; };
+		C2379F8B1E271CC60022573A /* LAThreadPool.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LAThreadPool.h; sourceTree = "<group>"; };
+		C2379F8C1E271CC60022573A /* main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		C21EBBFD1E1396C3001ECF99 /* Frameworks */ = {
+		C2379F781E271C3C0022573A /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -49,47 +47,47 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		C21EBBF71E1396C3001ECF99 = {
+		C2379F721E271C3C0022573A = {
 			isa = PBXGroup;
 			children = (
-				C21EBC021E1396C3001ECF99 /* HTTPProxy */,
-				C21EBC011E1396C3001ECF99 /* Products */,
+				C2379F851E271CC60022573A /* src */,
+				C2379F7C1E271C3C0022573A /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		C21EBC011E1396C3001ECF99 /* Products */ = {
+		C2379F7C1E271C3C0022573A /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				C21EBC001E1396C3001ECF99 /* HTTPProxy */,
+				C2379F7B1E271C3C0022573A /* HTTPProxy */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		C21EBC021E1396C3001ECF99 /* HTTPProxy */ = {
+		C2379F851E271CC60022573A /* src */ = {
 			isa = PBXGroup;
 			children = (
-				C21EBC031E1396C3001ECF99 /* main.c */,
-				C21EBC0B1E1396F0001ECF99 /* LAThreadPool.h */,
-				C21EBC0A1E1396F0001ECF99 /* LAThreadPool.c */,
-				C21EBC591E1561B0001ECF99 /* LASemaphore.h */,
-				C21EBC581E1561B0001ECF99 /* LASemaphore.c */,
-				C21EBC561E153B66001ECF99 /* LAHTTPProxy.h */,
-				C21EBC551E153B66001ECF99 /* LAHTTPProxy.c */,
-				C2379F231E25DAE10022573A /* Makefile */,
+				C2379F861E271CC60022573A /* LAHTTPProxy.c */,
+				C2379F871E271CC60022573A /* LAHTTPProxy.h */,
+				C2379F881E271CC60022573A /* LASemaphore.c */,
+				C2379F891E271CC60022573A /* LASemaphore.h */,
+				C2379F8A1E271CC60022573A /* LAThreadPool.c */,
+				C2379F8B1E271CC60022573A /* LAThreadPool.h */,
+				C2379F8C1E271CC60022573A /* main.c */,
 			);
-			path = HTTPProxy;
+			name = src;
+			path = ../src;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		C21EBBFF1E1396C3001ECF99 /* HTTPProxy */ = {
+		C2379F7A1E271C3C0022573A /* HTTPProxy */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = C21EBC071E1396C3001ECF99 /* Build configuration list for PBXNativeTarget "HTTPProxy" */;
+			buildConfigurationList = C2379F821E271C3C0022573A /* Build configuration list for PBXNativeTarget "HTTPProxy" */;
 			buildPhases = (
-				C21EBBFC1E1396C3001ECF99 /* Sources */,
-				C21EBBFD1E1396C3001ECF99 /* Frameworks */,
-				C21EBBFE1E1396C3001ECF99 /* CopyFiles */,
+				C2379F771E271C3C0022573A /* Sources */,
+				C2379F781E271C3C0022573A /* Frameworks */,
+				C2379F791E271C3C0022573A /* CopyFiles */,
 			);
 			buildRules = (
 			);
@@ -97,58 +95,57 @@
 			);
 			name = HTTPProxy;
 			productName = HTTPProxy;
-			productReference = C21EBC001E1396C3001ECF99 /* HTTPProxy */;
+			productReference = C2379F7B1E271C3C0022573A /* HTTPProxy */;
 			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		C21EBBF81E1396C3001ECF99 /* Project object */ = {
+		C2379F731E271C3C0022573A /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				LastUpgradeCheck = 0810;
 				ORGANIZATIONNAME = MacPu;
 				TargetAttributes = {
-					C21EBBFF1E1396C3001ECF99 = {
+					C2379F7A1E271C3C0022573A = {
 						CreatedOnToolsVersion = 8.1;
 						ProvisioningStyle = Automatic;
 					};
 				};
 			};
-			buildConfigurationList = C21EBBFB1E1396C3001ECF99 /* Build configuration list for PBXProject "HTTPProxy" */;
+			buildConfigurationList = C2379F761E271C3C0022573A /* Build configuration list for PBXProject "HTTPProxy" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
 			);
-			mainGroup = C21EBBF71E1396C3001ECF99;
-			productRefGroup = C21EBC011E1396C3001ECF99 /* Products */;
+			mainGroup = C2379F721E271C3C0022573A;
+			productRefGroup = C2379F7C1E271C3C0022573A /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				C21EBBFF1E1396C3001ECF99 /* HTTPProxy */,
+				C2379F7A1E271C3C0022573A /* HTTPProxy */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXSourcesBuildPhase section */
-		C21EBBFC1E1396C3001ECF99 /* Sources */ = {
+		C2379F771E271C3C0022573A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C2379F241E25DAE10022573A /* Makefile in Sources */,
-				C21EBC0C1E1396F0001ECF99 /* LAThreadPool.c in Sources */,
-				C21EBC041E1396C3001ECF99 /* main.c in Sources */,
-				C21EBC571E153B66001ECF99 /* LAHTTPProxy.c in Sources */,
-				C21EBC5A1E1561B0001ECF99 /* LASemaphore.c in Sources */,
+				C2379F911E271CC60022573A /* main.c in Sources */,
+				C2379F8E1E271CC60022573A /* LAHTTPProxy.c in Sources */,
+				C2379F8F1E271CC60022573A /* LASemaphore.c in Sources */,
+				C2379F901E271CC60022573A /* LAThreadPool.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		C21EBC051E1396C3001ECF99 /* Debug */ = {
+		C2379F801E271C3C0022573A /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -195,7 +192,7 @@
 			};
 			name = Debug;
 		};
-		C21EBC061E1396C3001ECF99 /* Release */ = {
+		C2379F811E271C3C0022573A /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -235,14 +232,18 @@
 			};
 			name = Release;
 		};
-		C21EBC081E1396C3001ECF99 /* Debug */ = {
+		C2379F831E271C3C0022573A /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				"GCC_PREPROCESSOR_DEFINITIONS[arch=*]" = (
+					"XCODE=1",
+					"DEBUG=1",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
 		};
-		C21EBC091E1396C3001ECF99 /* Release */ = {
+		C2379F841E271C3C0022573A /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -252,25 +253,25 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		C21EBBFB1E1396C3001ECF99 /* Build configuration list for PBXProject "HTTPProxy" */ = {
+		C2379F761E271C3C0022573A /* Build configuration list for PBXProject "HTTPProxy" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				C21EBC051E1396C3001ECF99 /* Debug */,
-				C21EBC061E1396C3001ECF99 /* Release */,
+				C2379F801E271C3C0022573A /* Debug */,
+				C2379F811E271C3C0022573A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		C21EBC071E1396C3001ECF99 /* Build configuration list for PBXNativeTarget "HTTPProxy" */ = {
+		C2379F821E271C3C0022573A /* Build configuration list for PBXNativeTarget "HTTPProxy" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				C21EBC081E1396C3001ECF99 /* Debug */,
-				C21EBC091E1396C3001ECF99 /* Release */,
+				C2379F831E271C3C0022573A /* Debug */,
+				C2379F841E271C3C0022573A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = C21EBBF81E1396C3001ECF99 /* Project object */;
+	rootObject = C2379F731E271C3C0022573A /* Project object */;
 }

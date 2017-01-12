@@ -18,7 +18,11 @@ int main(int argc, const char * argv[]) {
     printf("HTTPProxy (v %s)\r\n", Version);
     printf("star on https://github.com/MacPu/HTTPProxy \r\n");
     printf("****************************************\r\n\r\n");
-
+    
+#ifdef XCODE
+    start_http_proxy(8080);
+#else
+    
     if(argc != 2){
         printf("[HTTPProxy] cannot start proxy with invalied arg count\r\n");
         return 0;
@@ -32,5 +36,6 @@ int main(int argc, const char * argv[]) {
     }
     
     start_http_proxy(port);
+#endif
     return 0;
 }
