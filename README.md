@@ -30,7 +30,7 @@ make clean; make
 
 #### Xcode (iOS, MacOS)
 
-run Xcode/HTTPProxy.xcodeproj
+open Xcode/HTTPProxy.xcodeproj file. and run.
 
 #### Android
 
