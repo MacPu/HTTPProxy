@@ -157,7 +157,7 @@ static thpool_t * la_thpool_init(int max_num_threads)
 
 static int la_thpool_add_job(thpool_t* thpool, void (*function)(void*), void* arg)
 {
-    printf("pool alive:%d working:%d queue:%d \n",thpool->num_threads_alive,thpool->num_threads_working,thpool->job_queue->len);
+//    printf("pool alive:%d working:%d queue:%d \n",thpool->num_threads_alive,thpool->num_threads_working,thpool->job_queue->len);
     
     job_t *newjob = (job_t *)malloc(sizeof(job_t));
     if(newjob == NULL){
