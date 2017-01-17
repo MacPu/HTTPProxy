@@ -40,6 +40,8 @@
 typedef int http_socket;
 
 #define http_socket_failed -1
+#define http_request_on 1
+#define http_request_off 0
 
 #define MAX_HOST_NAME 512
 #define MAXSIZE 65535
@@ -75,6 +77,9 @@ enum http_versions_enum {
     HTTP_VERSION_INVALID
 };
 
+/**
+ http request header
+ */
 typedef struct http_header
 {
     enum http_methods_enum method;
@@ -85,12 +90,17 @@ typedef struct http_header
     TAILQ_HEAD(METADATA_HEAD, http_metadata_item) metadata_head;
 } http_header_t;
 
+/**
+ http request
+ */
 typedef struct http_request{
     http_socket client;
     http_socket server;
     http_header_t *header;
     LASemaphoreRef *semaphore;
+    int8_t status;
 }http_rquest_t;
+
 
 typedef struct http_metadata_item
 {
@@ -626,6 +636,9 @@ static void * do_exchange(void *arg)
             return NULL;
         }
         
+        //if socket did close, return null
+        if(request->status == http_request_off) return NULL;
+        
         ret = send_data(request->server,buffer,ret);
         if (ret <=0 ) {
             if(request->semaphore != NULL){
@@ -647,13 +660,16 @@ static void *exchange_data(void *arg)
 {
     http_rquest_t *request1 = (http_rquest_t *)arg;
     request1->semaphore = LASemaphoreCreate(0);
+    request1->status = http_request_on;
     http_rquest_t *request2 = calloc(1, sizeof(http_rquest_t));
     request2->client = request1->server;
     request2->server = request1->client;
     request2->semaphore = request1->semaphore;
     request2->header = request1->header;
+    request2->status = request1->status;
     
     //开始交换数据
+    // run two thread to exchagne data from server and client socket
     LAThreadPoolAddJob(_thpool, (void *)do_exchange, request2);
     LAThreadPoolAddJob(_thpool, (void *)do_exchange, request1);
     
@@ -665,11 +681,11 @@ static void *exchange_data(void *arg)
     shutdown(request1->client, SHUT_RDWR);
     close(request1->server);
     close(request1->client);
+    request1->status = http_request_off;
+    request2->status = request1->status;
     
     //再等待另外一端关闭socket。
     LASemaphoreWait(request1->semaphore);
-    
-    printf("[COLSE] client:%d  server:%d \r\n",request1->client, request1->server);
     
     //释放资源
     LASemaphoreDestroy(request1->semaphore);
@@ -696,7 +712,6 @@ static ssize_t pre_response(http_rquest_t* request)
     return ret;
 }
 
-
 /**
  每收到一个socket请求之后就会到这个方法里面来。这个是网络数据交换的核心代码
 
@@ -707,6 +722,7 @@ static void *do_proxy_thread(void *req)
     http_rquest_t *request = (http_rquest_t *)req;
     
     //先获取到header.
+    //recieve header
     request->header = http_read_header(request->client);
     if(request->header == NULL){  //获取失败
         proxy_log(LOG_ERROR, "do_proxy_thread():Failed to parse header");
@@ -716,6 +732,7 @@ static void *do_proxy_thread(void *req)
     }
     
     //连接服务器
+    // connect to server
     request->server = connect_server(request->header);
     if(request->server == http_socket_failed){
         free(request);
@@ -727,17 +744,21 @@ static void *do_proxy_thread(void *req)
     
     if(request->header->method == CONNECT){
         // 如果是CONNECT请求的话，先发送response数据，创建连接。
+        // if request is a CONNECT request, so send pre response to connect the link
         pre_response(request);
     }
     else{
         //发送http request
+        // send http request.
         send_data(request->server, request->header->source, strlen(request->header->source));
     }
     
     // 交换数据
+    // start exchange data
     exchange_data(request);
     
-    // 释放资源s
+    // 释放资源
+    // free memory
     http_header_destroy(request->header);
     free(request);
     return NULL;
